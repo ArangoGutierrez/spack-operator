@@ -1,0 +1,13 @@
+domain: spack.io
+layout: go.kubebuilder.io/v3
+projectName: spack-operator
+repo: github.com/ArangoGutierrez/spack-operator
+resources:
+- crdVersion: v1
+  group: package
+  kind: Spack
+  version: v1alpha1
+version: 3-alpha
+plugins:
+  manifests.sdk.operatorframework.io/v2: {}
+  scorecard.sdk.operatorframework.io/v2: {}

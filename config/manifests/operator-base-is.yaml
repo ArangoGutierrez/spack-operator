@@ -1,0 +1,9 @@
+---
+kind: ImageStream
+apiVersion: v1
+metadata:
+  name: spack-operator-base
+  namespace: spack-operator-system
+  labels:
+    app: spack-operator
+spec: {}

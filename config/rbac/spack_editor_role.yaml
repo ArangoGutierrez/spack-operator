@@ -1,0 +1,24 @@
+# permissions for end users to edit spacks.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: spack-editor-role
+rules:
+- apiGroups:
+  - package.spack.io
+  resources:
+  - spacks
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - package.spack.io
+  resources:
+  - spacks/status
+  verbs:
+  - get

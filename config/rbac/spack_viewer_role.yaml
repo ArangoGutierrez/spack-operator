@@ -1,0 +1,20 @@
+# permissions for end users to view spacks.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: spack-viewer-role
+rules:
+- apiGroups:
+  - package.spack.io
+  resources:
+  - spacks
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - package.spack.io
+  resources:
+  - spacks/status
+  verbs:
+  - get

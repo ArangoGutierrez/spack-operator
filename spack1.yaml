@@ -1,0 +1,9 @@
+apiVersion: package.spack.io/v1alpha1
+kind: Spack
+metadata:
+  name: example1
+  namespace: spack-operator-system
+spec: 
+  imagestream: "image1"
+  environment: "env1"  
+
