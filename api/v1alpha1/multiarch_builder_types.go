@@ -20,72 +20,84 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// SpackSpec defines the desired state of SpackPackage
+// BuildSpec defines the desired state of a package
 // +k8s:openapi-gen=true
-type SpackSpec struct {
+type BuildSpec struct {
 	// ImageStream stores the stream where to push the built image
 	ImageStream string `json:"imagestream,omitempty"`
 	// Environment stores the spack.yaml env configuration file
-	Environment string `json:"environment,omitempty"`
+	Environment []SpackEnvionment `json:"environment,omitempty"`
 }
 
-// SpackStatus defines the observed state of Spack
+// BuildStatus defines the observed state of a build
 // +k8s:openapi-gen=true
-type SpackStatus struct {
+type BuildStatus struct {
 	State InstallStatus `json:"state"`
 }
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 
-// Spack is the Schema for the Spack package builds API
+// Build is the Schema for the package builds API
 // +k8s:openapi-gen=true
 // +kubebuilder:subresource:status
-type Spack struct {
+type Build struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   SpackSpec   `json:"spec,omitempty"`
-	Status SpackStatus `json:"status,omitempty"`
+	// spec holds all the input necessary to produce a new package, and the conditions when
+	// to trigger them.
+	Spec BuildSpec `json:"spec,omitempty"`
+	// status holds any relevant information about a build config
+	// +optional
+	Status BuildStatus `json:"status,omitempty"`
+}
+
+// SpackEnvionment holds the definition of a Spack Environment.
+type SpackEnvionment struct {
+	// Name of the Spack Environment profile to be used in buildConfig.
+	Name *string `json:"name"`
+	// Specification of the Spack Environment to be consumed by the Spack builder.
+	Data *string `json:"data"`
 }
 
 // +kubebuilder:object:root=true
 
-// SpackList contains a list of Spack
-type SpackList struct {
+// BuildList contains a list of a build
+type BuildList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []Spack `json:"items"`
+	Items           []Build `json:"items"`
 }
 
-// InstallStatus describes the state of installation of spack packages
+// InstallStatus describes the state of installation of a package
 type InstallStatus string
 
 const (
 
-	// EmptyStatus indicates that the spack package builds have not even been
+	// EmptyStatus indicates that the package build have not even been
 	// created
 	EmptyStatus InstallStatus = "empty"
 
-	// AppliedStatus indicates that the spack package builds have been
+	// AppliedStatus indicates that the package build have been
 	// created
 	AppliedStatus InstallStatus = "applied"
 
-	// ValidadtedPackage indicates that the spack package builds have been
+	// ValidatedPackage indicates that the package build have been
 	// validated
-	ValidadtedPackage InstallStatus = "validated"
+	ValidatedPackage InstallStatus = "validated"
 
-	// ErroredPackage indicates that the spack package builds status is
+	// ErroredPackage indicates that the package build status is
 	// failing
 	ErroredPackage InstallStatus = "error"
 )
 
 func init() {
-	SchemeBuilder.Register(&Spack{}, &SpackList{})
+	SchemeBuilder.Register(&Build{}, &BuildList{})
 }
 
-// InstallStatus retrieves the status of a Spack CR
-func (s *Spack) InstallStatus() InstallStatus {
+// InstallStatus retrieves the status of a Build CR
+func (s *Build) InstallStatus() InstallStatus {
 	con := s.Status.State
 	if len(con) == 0 {
 		return EmptyStatus

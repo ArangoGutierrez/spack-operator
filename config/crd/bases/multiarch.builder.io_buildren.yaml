@@ -6,20 +6,20 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.4.1
   creationTimestamp: null
-  name: spacks.package.spack.io
+  name: builds.multiarch.builder.io
 spec:
-  group: package.spack.io
+  group: multiarch.builder.io
   names:
-    kind: Spack
-    listKind: SpackList
-    plural: spacks
-    singular: spack
+    kind: Build
+    listKind: BuildList
+    plural: builds
+    singular: build
   scope: Namespaced
   versions:
   - name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: Spack is the Schema for the Spack package builds API
+        description: Build is the Schema for the package builds API
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -34,22 +34,38 @@ spec:
           metadata:
             type: object
           spec:
-            description: SpackSpec defines the desired state of SpackPackage
+            description: spec holds all the input necessary to produce a new package,
+              and the conditions when to trigger them.
             properties:
               environment:
                 description: Environment stores the spack.yaml env configuration file
-                type: string
+                items:
+                  description: SpackEnvionment holds the definition of a Spack Environment.
+                  properties:
+                    data:
+                      description: Specification of the Spack Environment to be consumed
+                        by the Spack builder.
+                      type: string
+                    name:
+                      description: Name of the Spack Environment profile to be used
+                        in buildConfig.
+                      type: string
+                  required:
+                  - data
+                  - name
+                  type: object
+                type: array
               imagestream:
                 description: ImageStream stores the stream where to push the built
                   image
                 type: string
             type: object
           status:
-            description: SpackStatus defines the observed state of Spack
+            description: status holds any relevant information about a build config
             properties:
               state:
                 description: InstallStatus describes the state of installation of
-                  spack packages
+                  a package
                 type: string
             required:
             - state

@@ -2,12 +2,12 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: spack-editor-role
+  name: build-editor-role
 rules:
 - apiGroups:
-  - package.spack.io
+  - multiarch.builder.io
   resources:
-  - spacks
+  - builds
   verbs:
   - create
   - delete
@@ -17,8 +17,8 @@ rules:
   - update
   - watch
 - apiGroups:
-  - package.spack.io
+  - multiarch.builder.io
   resources:
-  - spacks/status
+  - builds/status
   verbs:
   - get

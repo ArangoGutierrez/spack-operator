@@ -7,6 +7,8 @@ metadata:
   name: buildah-base-image
   namespace: spack-operator-system
 spec:
+  successfulBuildsHistoryLimit: 3 
+  failedBuildsHistoryLimit: 3 
   output:
     to:
       kind: ImageStreamTag

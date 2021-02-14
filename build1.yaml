@@ -1,4 +1,4 @@
-apiVersion: package.spack.io/v1alpha1
+apiVersion: multiarch.builder.io/v1alpha1
 kind: Spack
 metadata:
   name: example1

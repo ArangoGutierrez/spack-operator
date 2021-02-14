@@ -21,27 +21,34 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	build "github.com/openshift/api/build/v1"
+	image "github.com/openshift/api/image/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
+
+	"k8s.io/klog"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	packagev1alpha1 "github.com/ArangoGutierrez/spack-operator/api/v1alpha1"
 )
 
-// SpackReconciler reconciles a Spack object
-type SpackReconciler struct {
+// BuildReconciler reconciles a Build object
+type BuildReconciler struct {
 	client.Client
-	Log    logr.Logger
-	Scheme *runtime.Scheme
+	Log       logr.Logger
+	Scheme    *runtime.Scheme
+	AssetsDir string
 }
 
-// +kubebuilder:rbac:groups=package.spack.io,resources=spacks,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=package.spack.io,resources=spacks/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=package.spack.io,resources=spacks/finalizers,verbs=update
+// +kubebuilder:rbac:groups=multiarch.builder.io,resources=spacks,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=multiarch.builder.io,resources=spacks/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=multiarch.builder.io,resources=spacks/finalizers,verbs=update
 // +kubebuilder:rbac:groups=core,resources=pods,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core,resources=pods/log,verbs=get
 // +kubebuilder:rbac:groups=apps,resources=daemonsets,verbs=get;list;watch;create;update;patch;delete
@@ -79,16 +86,16 @@ type SpackReconciler struct {
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
-func (r *SpackReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = r.Log.WithValues("spack", req.NamespacedName)
+func (r *BuildReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	_ = r.Log.WithValues("build", req.NamespacedName)
 
-	spkg := &packagev1alpha1.Spack{}
+	spkg := &packagev1alpha1.Build{}
 	err := r.Get(ctx, req.NamespacedName, spkg)
 	// Error reading the object - requeue the request.
 	if err != nil {
 		// handle deletion of resource
 		if errors.IsNotFound(err) {
-			// User deleted the cluster resource so delete the pipeline resources
+			// User deleted the cluster resource, so we need to delete the associated resources
 			r.Log.Info("resource has been deleted", "req", req.Name, "got", spkg.Name)
 			return ctrl.Result{}, nil
 		}
@@ -100,10 +107,10 @@ func (r *SpackReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	r.Log.Info("reconciling at status: " + string(spkg.InstallStatus()))
 	switch spkg.InstallStatus() {
 	case packagev1alpha1.EmptyStatus:
-		return r.createPackage(ctx, spkg)
+		return r.createBuild(ctx, spkg)
 	case packagev1alpha1.AppliedStatus:
-		return r.validatePackage(ctx, spkg)
-	case packagev1alpha1.ValidadtedPackage:
+		return r.validateBuild(ctx, spkg)
+	case packagev1alpha1.ValidatedPackage:
 		r.Log.Info("Spack Package Validated", "package", spkg.Name)
 		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 	}
@@ -112,56 +119,35 @@ func (r *SpackReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *SpackReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *BuildReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	// we want to initate reconcile loop only on spec change of the object
+	p := predicate.Funcs{
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			if !validateUpdateEvent(&e) {
+				return false
+			}
+			return true
+		},
+	}
+
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&packagev1alpha1.Spack{}).
+		For(&packagev1alpha1.Build{}).
 		Owns(&v1.Pod{}).
 		Owns(&appsv1.DaemonSet{}).
+		Owns(&build.BuildConfig{}, builder.WithPredicates(p)).
+		Owns(&image.ImageStream{}, builder.WithPredicates(p)).
 		Complete(r)
 }
 
-func (r *SpackReconciler) createPackage(ctx context.Context, spkg *packagev1alpha1.Spack) (ctrl.Result, error) {
-
-	r.Log.Info("Creating package build", "package", spkg.Name)
-	tmp := spkg.DeepCopy()
-	opts := []client.UpdateOption{}
-	tmp.Status.State = packagev1alpha1.AppliedStatus
-	if err := r.Client.Status().Update(ctx, tmp, opts...); err != nil {
-		r.Log.Error(err, "status update failed")
-		return ctrl.Result{}, err
+func validateUpdateEvent(e *event.UpdateEvent) bool {
+	if e.ObjectOld == nil {
+		klog.Error("Update event has no old runtime object to update")
+		return false
+	}
+	if e.ObjectNew == nil {
+		klog.Error("Update event has no new runtime object for update")
+		return false
 	}
 
-	objKey := types.NamespacedName{
-		Namespace: tmp.Namespace,
-		Name:      tmp.Name,
-	}
-	if err := r.Client.Get(ctx, objKey, tmp); err != nil {
-		r.Log.Error(err, "status update failed to refresh object")
-		return ctrl.Result{}, err
-	}
-
-	return ctrl.Result{Requeue: true, RequeueAfter: 3 * time.Second}, nil
-}
-
-func (r *SpackReconciler) validatePackage(ctx context.Context, spkg *packagev1alpha1.Spack) (ctrl.Result, error) {
-
-	r.Log.Info("Validating package", "package", spkg.Name)
-	tmp := spkg.DeepCopy()
-	opts := []client.UpdateOption{}
-	tmp.Status.State = packagev1alpha1.ValidadtedPackage
-	if err := r.Client.Status().Update(ctx, tmp, opts...); err != nil {
-		r.Log.Error(err, "status update failed")
-		return ctrl.Result{}, err
-	}
-
-	objKey := types.NamespacedName{
-		Namespace: tmp.Namespace,
-		Name:      tmp.Name,
-	}
-	if err := r.Client.Get(ctx, objKey, tmp); err != nil {
-		r.Log.Error(err, "status update failed to refresh object")
-		return ctrl.Result{}, err
-	}
-
-	return ctrl.Result{Requeue: true, RequeueAfter: 3 * time.Second}, nil
+	return true
 }

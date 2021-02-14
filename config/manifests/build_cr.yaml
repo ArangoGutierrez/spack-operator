@@ -1,0 +1,54 @@
+kind: Build
+apiVersion: build.openshift.io/v1
+metadata:
+  generation: 2
+  namespace: spack-operator-system
+  name: look-ma-no-hands
+  ownerReferences:
+  - apiVersion: build.openshift.io/v1
+    kind: BuildConfig
+    name: dry-run
+    uid: 33301f87-a797-4c00-b978-7eda32a7009a
+    controller: true
+  labels:
+    app: spack-operator
+    buildconfig: dry-run
+    openshift.io/build-config.name: dry-run
+    openshift.io/build.start-policy: Serial
+spec:
+  imageLabels:
+  - name: labelkey
+    value: labelvalue
+  serviceAccount: builder
+  source:
+    type: Dockerfile
+    dockerfile: |
+      FROM spack-operator-base:spackv0.16.0 as builder
+
+      COPY ./spack.yaml /opt/spack-environment
+      COPY ./build.sh /usr/bin
+      RUN chmod a+x /usr/bin/build.sh
+      RUN mkdir -p /opt/view
+
+      RUn /usr/bin/build.sh
+    configMaps:
+      - configMap:
+          name: spack-env-test
+      - configMap:
+          name: spack-build-logic
+  strategy:
+    type: Docker
+    dockerStrategy:
+      from:
+        kind: ImageStreamTag
+        name: spack-operator-base:spackv0.16.0
+  output:
+    to:
+      kind: ImageStreamTag
+      namespace: spack-operator-system
+      name: 'spack-operator-base:manual'
+    pushSecret:
+      name: builder-dockercfg-92zrx
+  resources: {}
+  postCommit: {}
+  nodeSelector: null

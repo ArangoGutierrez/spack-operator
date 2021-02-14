@@ -270,7 +270,7 @@ rules:
   - update
   - watch
 - apiGroups:
-  - package.spack.io
+  - multiarch.builder.io
   resources:
   - spacks
   verbs:
@@ -282,13 +282,13 @@ rules:
   - update
   - watch
 - apiGroups:
-  - package.spack.io
+  - multiarch.builder.io
   resources:
   - spacks/finalizers
   verbs:
   - update
 - apiGroups:
-  - package.spack.io
+  - multiarch.builder.io
   resources:
   - spacks/status
   verbs:

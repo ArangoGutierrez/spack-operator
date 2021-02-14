@@ -1,4 +1,0 @@
-spack:
-  specs:
-  - gromacs+mpi
-  - mpich

@@ -1,4 +1,4 @@
-# Build the manager binary
+# Build the multiarch-builder-operator binary
 FROM golang:1.15 as builder
 
 WORKDIR /workspace
@@ -13,15 +13,19 @@ RUN go mod download
 COPY main.go main.go
 COPY api/ api/
 COPY controllers/ controllers/
+COPY pkg/ pkg/
 
 # Build
-RUN CGO_ENABLED=0 GOOS=linux GO111MODULE=on go build -a -o manager main.go
+RUN CGO_ENABLED=0 GOOS=linux GO111MODULE=on go build -a -o multiarch-builder-operator main.go
 
-# Use distroless as minimal base image to package the manager binary
-# Refer to https://github.com/GoogleContainerTools/distroless for more details
 FROM registry.access.redhat.com/ubi8/ubi 
-WORKDIR /
-COPY --from=builder /workspace/manager .
-USER spack-operator
 
-ENTRYPOINT ["/manager"]
+ARG ASSETS_DIR=build/assets
+
+COPY --from=builder /workspace/multiarch-builder-operator .
+COPY ${ASSETS_DIR} /assets
+
+WORKDIR /
+USER multiarch-builder-operator
+
+ENTRYPOINT ["/multiarch-builder-operator"]

@@ -33,6 +33,7 @@ import (
 
 	packagev1alpha1 "github.com/ArangoGutierrez/spack-operator/api/v1alpha1"
 	"github.com/ArangoGutierrez/spack-operator/controllers"
+	"github.com/ArangoGutierrez/spack-operator/pkg/controller/multiarch-builder/components"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -71,19 +72,20 @@ func main() {
 		Port:                   9443,
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
-		LeaderElectionID:       "44020af5.spack.io",
+		LeaderElectionID:       "44020af5.builder.io",
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
 		os.Exit(1)
 	}
 
-	if err = (&controllers.SpackReconciler{
-		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("controllers").WithName("Spack"),
-		Scheme: mgr.GetScheme(),
+	if err = (&controllers.BuildReconciler{
+		Client:    mgr.GetClient(),
+		Log:       ctrl.Log.WithName("controllers").WithName("multiarch-builder"),
+		Scheme:    mgr.GetScheme(),
+		AssetsDir: components.AssetsDir,
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "Spack")
+		setupLog.Error(err, "unable to create controller", "controller", "multiarch-builder")
 		os.Exit(1)
 	}
 	// +kubebuilder:scaffold:builder

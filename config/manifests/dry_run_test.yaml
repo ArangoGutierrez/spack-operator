@@ -1,0 +1,43 @@
+---
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  labels:
+    app: spack-operator
+  name: dry-run
+  namespace: spack-operator-system
+spec:
+  successfulBuildsHistoryLimit: 3 
+  failedBuildsHistoryLimit: 3 
+  output:
+    to:
+      kind: ImageStreamTag
+      name: spack-operator-base:envtest
+      namespace: spack-operator-system
+    imageLabels:
+    - name: "archspec.io/cpu.target"
+      value: haswell
+  source:
+    type: Dockerfile
+    dockerfile: |
+      FROM spack-operator-base:spackv0.16.0 as builder
+
+      COPY ./spack.yaml /opt/spack-environment
+      COPY ./build.sh /usr/bin
+      RUN chmod a+x /usr/bin/build.sh
+      RUN mkdir -p /opt/view
+
+      RUN /usr/bin/build.sh
+      
+    configMaps:
+      - configMap:
+          name: spack-env-test 
+      - configMap:
+          name: spack-build-logic
+  strategy:
+    dockerStrategy:
+      from:
+        kind: ImageStreamTag
+        name: spack-operator-base:spackv0.16.0
+  triggers:
+  - type: ConfigChange

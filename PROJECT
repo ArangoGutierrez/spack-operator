@@ -1,11 +1,11 @@
-domain: spack.io
+domain: builder.io
 layout: go.kubebuilder.io/v3
-projectName: spack-operator
-repo: github.com/ArangoGutierrez/spack-operator
+projectName: multiarch-builder-operator
+repo: github.com/ArangoGutierrez/multiarch-builder-operator
 resources:
 - crdVersion: v1
   group: package
-  kind: Spack
+  kind: Build
   version: v1alpha1
 version: 3-alpha
 plugins:

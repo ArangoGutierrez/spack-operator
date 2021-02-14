@@ -4,13 +4,15 @@ kind: BuildConfig
 metadata:
   labels:
     app: spack-operator
-  name: test-image
+  name: spack-base-image
   namespace: spack-operator-system
 spec:
+  successfulBuildsHistoryLimit: 3 
+  failedBuildsHistoryLimit: 3 
   output:
     to:
       kind: ImageStreamTag
-      name: spack-operator-base:test
+      name: spack-operator-base:spackv0.16.0
       namespace: spack-operator-system
   source:
     type: Dockerfile
@@ -37,6 +39,7 @@ spec:
               git \
               gnupg2 \
               hostname \
+              lbzip2 \
               iproute \
               Lmod \
               make \
@@ -77,15 +80,10 @@ spec:
        && sed -i 's/mesg n/( tty -s \\&\\& mesg n || true )/g' ~/.profile \
        || true
 
-      WORKDIR /root
-      SHELL ["docker-shell"]
-
-      # TODO: add a command to Spack that (re)creates the package cache
-      RUN spack spec hdf5+mpi
-
-      ENTRYPOINT ["/bin/bash", "/opt/spack/share/spack/docker/entrypoint.bash"]
-      CMD ["interactive-shell"]
-
+      ENV PATH "$PATH:$SPACK_ROOT/bin"
+      RUN mkdir /opt/spack-environment
+      WORKDIR /opt/spack-environment
+ 
     git:
       uri: https://github.com/spack/spack
       ref: v0.16.0

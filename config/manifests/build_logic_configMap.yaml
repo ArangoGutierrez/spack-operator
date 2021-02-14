@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: spack-build-logic
+data:
+  build.sh: |
+    #!/bin/sh -e
+
+    set -o pipefail
+    set -o errexit
+    set -o nounset
+    
+    . /opt/spack/share/spack/setup-env.sh
+    
+    # Install the software, remove unnecessary deps
+    cd /opt/spack-environment \
+        && spack env activate . \
+        && spack install --fail-fast \
+        && spack gc -y
+    
+    # Strip all the binaries
+    find -L /opt/view/* -type f -exec readlink -f '{}' \; | \
+        xargs file -i | \
+        grep 'charset=binary' | \
+        grep 'x-executable\|x-archive\|x-sharedlib' | \
+        awk -F: '{print $1}' | xargs strip -s

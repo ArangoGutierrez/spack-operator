@@ -2,10 +2,10 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: spack-viewer-role
+  name: build-viewer-role
 rules:
 - apiGroups:
-  - package.spack.io
+  - multiarch.builder.io
   resources:
   - spacks
   verbs:
@@ -13,8 +13,8 @@ rules:
   - list
   - watch
 - apiGroups:
-  - package.spack.io
+  - multiarch.builder.io
   resources:
-  - spacks/status
+  - builds/status
   verbs:
   - get
