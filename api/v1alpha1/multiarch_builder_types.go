@@ -32,7 +32,9 @@ type BuildSpec struct {
 // BuildStatus defines the observed state of a build
 // +k8s:openapi-gen=true
 type BuildStatus struct {
-	State InstallStatus `json:"state"`
+	State      InstallStatus `json:"state,omitempty"`
+	LastUpdate metav1.Time   `json:"lastUpdate,omitempty"`
+	Reason     string        `json:"reason,omitempty"`
 }
 
 // +kubebuilder:object:root=true
@@ -41,6 +43,7 @@ type BuildStatus struct {
 // Build is the Schema for the package builds API
 // +k8s:openapi-gen=true
 // +kubebuilder:subresource:status
+// +kubebuilder:resource:path=builds,scope=Namespaced
 type Build struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -76,12 +79,8 @@ type InstallStatus string
 const (
 
 	// EmptyStatus indicates that the package build have not even been
-	// created
+	// validated
 	EmptyStatus InstallStatus = "empty"
-
-	// AppliedStatus indicates that the package build have been
-	// created
-	AppliedStatus InstallStatus = "applied"
 
 	// ValidatedPackage indicates that the package build have been
 	// validated
@@ -90,6 +89,18 @@ const (
 	// ErroredPackage indicates that the package build status is
 	// failing
 	ErroredPackage InstallStatus = "error"
+
+	// InitializedStatus indicates that the package build have been
+	// triggered
+	InitializedStatus InstallStatus = "initialized"
+
+	// UpdatedStatus indicates that the package build have been
+	// updated
+	UpdatedStatus InstallStatus = "updated"
+
+	// DeletedStatus indicates that the package build have been
+	// created
+	DeletedStatus InstallStatus = "deleted"
 )
 
 func init() {

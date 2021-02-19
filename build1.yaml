@@ -1,9 +1,10 @@
 apiVersion: multiarch.builder.io/v1alpha1
-kind: Spack
+kind: Build
 metadata:
-  name: example1
+  name: example
   namespace: spack-operator-system
-spec: 
-  imagestream: "image1"
-  environment: "env1"  
-
+spec:
+  imagestream: "bla:bla"
+  environment:
+    - name: "test1"
+      data: "bla bla bla"

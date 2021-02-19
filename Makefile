@@ -44,7 +44,7 @@ all: manager
 
 # Run tests
 ENVTEST_ASSETS_DIR=$(shell pwd)/testbin
-test: generate fmt vet manifests
+test: fmt vet 
 	mkdir -p ${ENVTEST_ASSETS_DIR}
 	test -f ${ENVTEST_ASSETS_DIR}/setup-envtest.sh || curl -sSLo ${ENVTEST_ASSETS_DIR}/setup-envtest.sh https://raw.githubusercontent.com/kubernetes-sigs/controller-runtime/v0.7.0/hack/setup-envtest.sh
 	source ${ENVTEST_ASSETS_DIR}/setup-envtest.sh; fetch_envtest_tools $(ENVTEST_ASSETS_DIR); setup_envtest_env $(ENVTEST_ASSETS_DIR); go test ./... -coverprofile cover.out
@@ -66,7 +66,7 @@ uninstall: manifests kustomize
 	$(KUSTOMIZE) build config/crd | kubectl delete -f -
 
 # Deploy controller in the configured Kubernetes cluster in ~/.kube/config
-deploy: manifests kustomize
+deploy: kustomize
 	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
 	$(KUSTOMIZE) build config/default | kubectl apply -f -
 
@@ -84,7 +84,7 @@ fmt:
 
 # Run go vet against code
 vet:
-	go vet ./...
+	go vet -composites=false ./...
 
 # Generate code
 generate: controller-gen

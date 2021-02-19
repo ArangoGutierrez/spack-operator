@@ -23,7 +23,7 @@ FROM registry.access.redhat.com/ubi8/ubi
 ARG ASSETS_DIR=build/assets
 
 COPY --from=builder /workspace/multiarch-builder-operator .
-COPY ${ASSETS_DIR} /assets
+#COPY ${ASSETS_DIR} /assets
 
 WORKDIR /
 USER multiarch-builder-operator

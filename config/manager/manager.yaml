@@ -28,7 +28,7 @@ spec:
         runAsGroup: 499
       containers:
       - command:
-        - /manager
+        - /multiarch-builder-operator
         args:
         - --leader-elect
         image: controller:latest

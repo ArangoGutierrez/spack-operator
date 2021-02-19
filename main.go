@@ -24,6 +24,8 @@ import (
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
+	buildv1 "github.com/openshift/api/build/v1"
+	imagev1 "github.com/openshift/api/image/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -50,6 +52,15 @@ func init() {
 }
 
 func main() {
+
+	// we have two namespaces that we need to watch
+	// 1. infra-builds namespace - for tuned resources
+	// 2. build-farm namespace - for cluster wide resources
+	//namespaces := []string{
+	//	components.NamespaceNodeTuningOperator,
+	//	metav1.NamespaceNone,
+	//}
+
 	var metricsAddr string
 	var enableLeaderElection bool
 	var probeAddr string
@@ -76,6 +87,17 @@ func main() {
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
+		os.Exit(1)
+	}
+
+	// Add OpenShift only schemas Build and Image
+	if err := buildv1.AddToScheme(mgr.GetScheme()); err != nil {
+		setupLog.Error(err, "unable to add BuildV1 Schema to manager")
+		os.Exit(1)
+	}
+
+	if err := imagev1.AddToScheme(mgr.GetScheme()); err != nil {
+		setupLog.Error(err, "unable to add imagev1 Schema to manager")
 		os.Exit(1)
 	}
 

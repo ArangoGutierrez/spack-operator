@@ -21,9 +21,8 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
-	build "github.com/openshift/api/build/v1"
-	image "github.com/openshift/api/image/v1"
-	appsv1 "k8s.io/api/apps/v1"
+	buildv1 "github.com/openshift/api/build/v1"
+	imagev1 "github.com/openshift/api/image/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -46,9 +45,9 @@ type BuildReconciler struct {
 	AssetsDir string
 }
 
-// +kubebuilder:rbac:groups=multiarch.builder.io,resources=spacks,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=multiarch.builder.io,resources=spacks/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=multiarch.builder.io,resources=spacks/finalizers,verbs=update
+// +kubebuilder:rbac:groups=multiarch.builder.io,resources=builds,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=multiarch.builder.io,resources=builds/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=multiarch.builder.io,resources=builds/finalizers,verbs=update
 // +kubebuilder:rbac:groups=core,resources=pods,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core,resources=pods/log,verbs=get
 // +kubebuilder:rbac:groups=apps,resources=daemonsets,verbs=get;list;watch;create;update;patch;delete
@@ -89,6 +88,7 @@ type BuildReconciler struct {
 func (r *BuildReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = r.Log.WithValues("build", req.NamespacedName)
 
+	// spkg Spack Package
 	spkg := &packagev1alpha1.Build{}
 	err := r.Get(ctx, req.NamespacedName, spkg)
 	// Error reading the object - requeue the request.
@@ -97,7 +97,7 @@ func (r *BuildReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		if errors.IsNotFound(err) {
 			// User deleted the cluster resource, so we need to delete the associated resources
 			r.Log.Info("resource has been deleted", "req", req.Name, "got", spkg.Name)
-			return ctrl.Result{}, nil
+			return r.deleteBuild(ctx, spkg)
 		}
 
 		r.Log.Error(err, "requeueing event since there was an error reading object")
@@ -108,7 +108,7 @@ func (r *BuildReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	switch spkg.InstallStatus() {
 	case packagev1alpha1.EmptyStatus:
 		return r.createBuild(ctx, spkg)
-	case packagev1alpha1.AppliedStatus:
+	case packagev1alpha1.InitializedStatus:
 		return r.validateBuild(ctx, spkg)
 	case packagev1alpha1.ValidatedPackage:
 		r.Log.Info("Spack Package Validated", "package", spkg.Name)
@@ -120,6 +120,8 @@ func (r *BuildReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *BuildReconciler) SetupWithManager(mgr ctrl.Manager) error {
+
+	// we want to initate reconcile loop only on change under labels or spec of the object
 	// we want to initate reconcile loop only on spec change of the object
 	p := predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {
@@ -133,9 +135,8 @@ func (r *BuildReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&packagev1alpha1.Build{}).
 		Owns(&v1.Pod{}).
-		Owns(&appsv1.DaemonSet{}).
-		Owns(&build.BuildConfig{}, builder.WithPredicates(p)).
-		Owns(&image.ImageStream{}, builder.WithPredicates(p)).
+		Owns(&buildv1.BuildConfig{}, builder.WithPredicates(p)).
+		Owns(&imagev1.ImageStream{}, builder.WithPredicates(p)).
 		Complete(r)
 }
 
